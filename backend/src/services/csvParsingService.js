@@ -20,22 +20,11 @@ function isMissingValue(value) {
   return value === '' || value === null || value === undefined;
 }
 
-function toNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function parseTimestamp(value) {
-  const timestamp = new Date(value);
-  return Number.isNaN(timestamp.getTime()) ? null : timestamp;
-}
-
 function parseCsvFile(filePath) {
   return new Promise((resolve, reject) => {
-    const cleanedRecords = [];
+    const rawRows = [];
     const missingValues = {};
     let detectedColumns = [];
-    let invalidRowsRemoved = 0;
 
     const stream = fs.createReadStream(filePath).pipe(csv());
 
@@ -48,45 +37,19 @@ function parseCsvFile(filePath) {
 
     stream.on('data', (row) => {
       const normalizedRow = normalizeRow(row);
+      rawRows.push(normalizedRow);
 
       SUPPORTED_COLUMNS.forEach((column) => {
         if (isMissingValue(normalizedRow[column])) {
           missingValues[column] += 1;
         }
       });
-
-      const timestamp = parseTimestamp(normalizedRow.timestamp);
-      const cpuUsage = toNumber(normalizedRow.cpuUsage);
-      const memoryUsage = toNumber(normalizedRow.memoryUsage);
-
-      const requiredRowValid = Boolean(timestamp) && cpuUsage !== null && cpuUsage >= 0 && memoryUsage !== null && memoryUsage >= 0;
-
-      if (!requiredRowValid) {
-        invalidRowsRemoved += 1;
-        return;
-      }
-
-      const requestCount = toNumber(normalizedRow.requestCount);
-      const responseTime = toNumber(normalizedRow.responseTime);
-      const activeInstances = toNumber(normalizedRow.activeInstances);
-      const networkTraffic = toNumber(normalizedRow.networkTraffic);
-
-      cleanedRecords.push({
-        timestamp,
-        cpuUsage,
-        memoryUsage,
-        requestCount: requestCount !== null && requestCount >= 0 ? requestCount : null,
-        responseTime: responseTime !== null && responseTime >= 0 ? responseTime : null,
-        activeInstances: activeInstances !== null && activeInstances >= 0 ? activeInstances : null,
-        networkTraffic: networkTraffic !== null && networkTraffic >= 0 ? networkTraffic : null
-      });
     });
 
     stream.on('end', () => {
       resolve({
         detectedColumns,
-        cleanedRecords,
-        invalidRowsRemoved,
+        rawRows,
         missingValues
       });
     });

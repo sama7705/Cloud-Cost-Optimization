@@ -42,6 +42,18 @@ const metricRecordSchema = new mongoose.Schema(
       type: Number,
       min: 0,
       default: null
+    },
+    hourOfDay: {
+      type: Number,
+      min: 0,
+      max: 23,
+      required: true
+    },
+    dayOfWeek: {
+      type: Number,
+      min: 0,
+      max: 6,
+      required: true
     }
   },
   { timestamps: true }

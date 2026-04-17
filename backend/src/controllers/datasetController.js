@@ -2,7 +2,9 @@ const datasetIngestionService = require('../services/datasetIngestionService');
 
 async function uploadDataset(req, res, next) {
   try {
-    const summary = await datasetIngestionService.uploadDataset(req.file);
+    const summary = await datasetIngestionService.uploadDataset(req.file, {
+      normalizeForMl: req.body?.normalizeForMl ?? req.query?.normalizeForMl
+    });
 
     res.status(201).json({
       success: true,
@@ -23,7 +25,17 @@ async function getDatasets(req, res, next) {
   }
 }
 
+async function getPreprocessingReport(req, res, next) {
+  try {
+    const report = await datasetIngestionService.getPreprocessingReport(req.params.id);
+    res.json({ success: true, data: report });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   uploadDataset,
-  getDatasets
+  getDatasets,
+  getPreprocessingReport
 };
