@@ -1,21 +1,33 @@
-function simulateScaling({ currentInstances = 2, predictedLoad = 0, scaleUpThreshold = 70, scaleDownThreshold = 30, maxInstances = 10, minInstances = 1 }) {
-  let action = 'no_action';
-  let toInstances = currentInstances;
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
 
-  if (predictedLoad > scaleUpThreshold && currentInstances < maxInstances) {
-    action = 'scale_up';
-    toInstances = currentInstances + 1;
-  } else if (predictedLoad < scaleDownThreshold && currentInstances > minInstances) {
-    action = 'scale_down';
-    toInstances = currentInstances - 1;
-  }
+function executeLocalScalingDecision({
+  currentInstances,
+  targetInstances,
+  minInstances = 1,
+  maxInstances = 10
+}) {
+  const safeCurrentInstances = Math.max(1, Number(currentInstances) || 1);
+  const safeTargetInstances = clamp(Math.round(Number(targetInstances) || safeCurrentInstances), minInstances, maxInstances);
+
+  const action =
+    safeTargetInstances > safeCurrentInstances
+      ? 'scale_up'
+      : safeTargetInstances < safeCurrentInstances
+        ? 'scale_down'
+        : 'no_action';
 
   return {
+    status: 'simulated',
     action,
-    fromInstances: currentInstances,
-    toInstances,
-    reason: `Predicted load: ${predictedLoad}%`
+    previousInstances: safeCurrentInstances,
+    newInstances: safeTargetInstances,
+    simulationNote: `Local simulation applied: ${safeCurrentInstances} -> ${safeTargetInstances} instances`,
+    executedAt: new Date()
   };
 }
 
-module.exports = { simulateScaling };
+module.exports = {
+  executeLocalScalingDecision
+};

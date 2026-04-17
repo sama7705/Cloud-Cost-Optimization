@@ -20,13 +20,21 @@ const predictionCreateSchema = [
   { field: 'notes', required: false, type: 'string' }
 ];
 
-const scalingRunSchema = [
+const scalingEvaluateSchema = [
+  { field: 'cpuUsage', required: true, type: 'number', min: 0 },
+  { field: 'memoryUsage', required: true, type: 'number', min: 0 },
+  { field: 'requestCount', required: true, type: 'number', min: 0 },
+  { field: 'responseTime', required: false, type: 'number', min: 0 },
+  { field: 'activeInstances', required: false, type: 'number', min: 1 },
   { field: 'currentInstances', required: false, type: 'number', min: 1 },
   { field: 'predictedLoad', required: false, type: 'number', min: 0 },
-  { field: 'scaleUpThreshold', required: false, type: 'number', min: 0 },
-  { field: 'scaleDownThreshold', required: false, type: 'number', min: 0 },
+  { field: 'minInstances', required: false, type: 'number', min: 1 },
   { field: 'maxInstances', required: false, type: 'number', min: 1 },
-  { field: 'minInstances', required: false, type: 'number', min: 1 }
+  { field: 'targetCpuPerInstance', required: false, type: 'number', min: 1 },
+  { field: 'targetMemoryPerInstance', required: false, type: 'number', min: 1 },
+  { field: 'targetRequestsPerInstance', required: false, type: 'number', min: 1 },
+  { field: 'responseTimeScaleUpMs', required: false, type: 'number', min: 1 },
+  { field: 'responseTimeScaleDownMs', required: false, type: 'number', min: 1 }
 ];
 
 const experimentCreateSchema = [
@@ -40,6 +48,6 @@ module.exports = {
   datasetCreateSchema,
   metricCreateSchema,
   predictionCreateSchema,
-  scalingRunSchema,
+  scalingEvaluateSchema,
   experimentCreateSchema
 };
