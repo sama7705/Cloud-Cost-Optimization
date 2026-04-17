@@ -5,7 +5,7 @@ from typing import Any, Dict, Tuple
 import joblib
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
 from tensorflow.keras.models import load_model
 
 
@@ -19,15 +19,16 @@ def ensure_model_dir() -> None:
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def build_lstm_model(sequence_length: int) -> Sequential:
-    """Create and compile a compact LSTM model for time-series forecasting."""
+def build_lstm_model(sequence_length: int, n_features: int, forecast_horizon: int) -> Sequential:
+    """Create and compile an LSTM model for multivariate forecasting."""
     model = Sequential(
         [
-            LSTM(64, return_sequences=True, input_shape=(sequence_length, 1)),
+            Input(shape=(sequence_length, n_features)),
+            LSTM(64, return_sequences=True),
             Dropout(0.2),
             LSTM(32),
             Dense(16, activation="relu"),
-            Dense(1),
+            Dense(forecast_horizon),
         ]
     )
     model.compile(optimizer="adam", loss="mse")
