@@ -35,7 +35,9 @@ async def train_model(
         train_samples, validation_loss, model_path, scaler_path = train_from_dataframe(
             dataframe=dataframe,
             target_column=request.target_column,
+            feature_config=request.feature_columns,
             sequence_length=request.sequence_length,
+            horizon=request.horizon,
             epochs=request.epochs,
             batch_size=request.batch_size,
         )
@@ -63,10 +65,16 @@ async def predict(
         predictions = predict_next_points(
             dataframe=dataframe,
             target_column=request.target_column,
+            feature_config=request.feature_columns,
             sequence_length=request.sequence_length,
             horizon=request.horizon,
         )
-        return PredictResponse(message="Prediction generated successfully.", predictions=predictions)
+        return PredictResponse(
+            message="Prediction generated successfully.",
+            target_column=request.target_column,
+            horizon=request.horizon,
+            predictions=predictions,
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

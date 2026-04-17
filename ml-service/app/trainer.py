@@ -2,36 +2,60 @@ from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import EarlyStopping
 
 from .model_utils import build_lstm_model, load_artifacts, save_artifacts
 from .preprocessing import (
-    extract_target_series,
+    extract_feature_matrix,
     fit_and_scale,
-    inverse_scale,
+    inverse_target_scale,
+    parse_feature_config,
     scale_with_existing,
+    select_feature_columns,
 )
 from .sequences import create_sequences
+
+
+def _split_train_validation(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    split_idx = max(int(len(x) * 0.8), 1)
+    if split_idx >= len(x):
+        split_idx = len(x) - 1
+    if split_idx < 1:
+        raise ValueError("Not enough sequence windows to create train/validation splits.")
+    return x[:split_idx], x[split_idx:], y[:split_idx], y[split_idx:]
 
 
 def train_from_dataframe(
     dataframe: pd.DataFrame,
     target_column: str,
+    feature_config: str,
     sequence_length: int,
+    horizon: int,
     epochs: int,
     batch_size: int,
 ) -> Tuple[int, float, str, str]:
-    """Train an LSTM model from a dataframe and persist artifacts."""
-    raw_values = extract_target_series(dataframe, target_column)
-    scaled_values, scaler = fit_and_scale(raw_values)
+    """Train an LSTM model from real workload dataframe rows and persist artifacts."""
+    configured_features = parse_feature_config(feature_config)
+    feature_columns = select_feature_columns(dataframe, configured_features)
 
-    x, y = create_sequences(scaled_values, sequence_length)
-    x_train, x_val, y_train, y_val = train_test_split(
-        x, y, test_size=0.2, shuffle=False
+    if target_column not in feature_columns:
+        raise ValueError(
+            f"target_column '{target_column}' must be included in selected features: {feature_columns}."
+        )
+
+    raw_features = extract_feature_matrix(dataframe, feature_columns)
+    scaled_features, scaler = fit_and_scale(raw_features)
+    target_index = feature_columns.index(target_column)
+
+    x, y = create_sequences(
+        values=scaled_features,
+        sequence_length=sequence_length,
+        target_index=target_index,
+        horizon=horizon,
     )
+    x_train, x_val, y_train, y_val = _split_train_validation(x, y)
 
-    model = build_lstm_model(sequence_length)
+    model = build_lstm_model(sequence_length, n_features=len(feature_columns), forecast_horizon=horizon)
     callbacks = [EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True)]
 
     history = model.fit(
@@ -47,7 +71,10 @@ def train_from_dataframe(
     val_loss = float(history.history["val_loss"][-1])
     metadata = {
         "target_column": target_column,
+        "feature_columns": feature_columns,
+        "target_index": target_index,
         "sequence_length": sequence_length,
+        "forecast_horizon": horizon,
         "epochs": epochs,
         "batch_size": batch_size,
         "train_samples": int(len(x_train)),
@@ -61,36 +88,53 @@ def train_from_dataframe(
 def predict_next_points(
     dataframe: pd.DataFrame,
     target_column: str,
+    feature_config: str,
     sequence_length: int,
     horizon: int,
 ) -> List[float]:
-    """Generate iterative multi-step forecasts using the saved model."""
+    """Generate workload forecasts using the saved model and real workload rows."""
     model, scaler, metadata = load_artifacts()
 
-    trained_sequence_length = int(metadata.get("sequence_length", sequence_length))
+    trained_sequence_length = int(metadata.get("sequence_length"))
+    trained_horizon = int(metadata.get("forecast_horizon", 1))
+    trained_target_column = str(metadata.get("target_column"))
+    trained_feature_columns = list(metadata.get("feature_columns", []))
+    target_index = int(metadata.get("target_index"))
+
     if trained_sequence_length != sequence_length:
         raise ValueError(
             f"Provided sequence_length={sequence_length}, but trained model expects "
             f"{trained_sequence_length}."
         )
 
-    raw_values = extract_target_series(dataframe, target_column)
-    if len(raw_values) < sequence_length:
+    if target_column != trained_target_column:
         raise ValueError(
-            f"Uploaded CSV needs at least {sequence_length} rows in '{target_column}' for prediction."
+            f"Provided target_column='{target_column}', but trained model expects "
+            f"'{trained_target_column}'."
         )
 
-    scaled_values = scale_with_existing(raw_values, scaler)
-    window = scaled_values[-sequence_length:].reshape(1, sequence_length, 1)
+    configured_features = parse_feature_config(feature_config)
+    feature_columns = select_feature_columns(dataframe, configured_features)
+    if feature_columns != trained_feature_columns:
+        raise ValueError(
+            "Provided features do not match the trained model. "
+            f"Expected {trained_feature_columns}, received {feature_columns}."
+        )
 
-    future_scaled = []
-    for _ in range(horizon):
-        next_scaled = model.predict(window, verbose=0)[0][0]
-        future_scaled.append([next_scaled])
+    if horizon > trained_horizon:
+        raise ValueError(
+            f"Requested horizon={horizon}, but trained model supports up to {trained_horizon}."
+        )
 
-        next_step = np.array(next_scaled, dtype=np.float32).reshape(1, 1, 1)
-        window = np.concatenate([window[:, 1:, :], next_step], axis=1)
+    raw_features = extract_feature_matrix(dataframe, feature_columns)
+    if len(raw_features) < sequence_length:
+        raise ValueError(
+            f"Uploaded CSV needs at least {sequence_length} rows for prediction."
+        )
 
-    future_scaled_array = np.array(future_scaled, dtype=np.float32)
-    future_values = inverse_scale(future_scaled_array, scaler).reshape(-1)
-    return [float(value) for value in future_values]
+    scaled_features = scale_with_existing(raw_features, scaler)
+    window = scaled_features[-sequence_length:, :].reshape(1, sequence_length, len(feature_columns))
+
+    predicted_scaled = model.predict(window, verbose=0)[0][:horizon]
+    predicted_values = inverse_target_scale(predicted_scaled, scaler, target_index=target_index)
+    return [float(value) for value in predicted_values]
