@@ -1,20 +1,19 @@
 # Backend (Phase 1 Skeleton)
 
-This is the **Node.js + Express backend** for the project:
+This is the **Node.js + Express backend** for:
 
 **AI-Based Cloud Cost Optimization with Predictive Auto-Scaling**
 
-This Phase 1 skeleton includes:
+Phase 1 includes:
 - Express app setup
 - MongoDB connection with Mongoose
 - Modular structure (routes, controllers, services, models, middleware)
 - Health endpoint
 - Placeholder APIs for datasets, metrics, predictions, scaling, experiments, and dashboard
-- Execution layer inside backend (`src/modules/execution`)
+- Basic request validation for write routes
+- Centralized error handling middleware
 
----
-
-## 1) Folder Structure
+## Folder Structure
 
 ```txt
 backend/
@@ -37,7 +36,8 @@ backend/
     │   └── scalingController.js
     ├── middleware/
     │   ├── errorHandler.js
-    │   └── notFound.js
+    │   ├── notFound.js
+    │   └── validateRequest.js
     ├── models/
     │   ├── Dataset.js
     │   ├── Experiment.js
@@ -56,35 +56,34 @@ backend/
     │   ├── metricRoutes.js
     │   ├── predictionRoutes.js
     │   └── scalingRoutes.js
-    └── services/
-        ├── dashboardService.js
-        ├── datasetService.js
-        ├── experimentService.js
-        ├── metricService.js
-        ├── predictionService.js
-        └── scalingService.js
+    ├── services/
+    │   ├── dashboardService.js
+    │   ├── datasetService.js
+    │   ├── experimentService.js
+    │   ├── metricService.js
+    │   ├── predictionService.js
+    │   └── scalingService.js
+    └── validation/
+        └── schemas.js
 ```
 
----
+## Quick Start
 
-## 2) Setup
+### 1) Install dependencies
 
-### Prerequisites
-- Node.js 18+
-- MongoDB running locally (default URI in `.env.example`)
-
-### Install
 ```bash
 cd backend
 npm install
 ```
 
-### Configure environment
+### 2) Configure environment variables
+
 ```bash
 cp .env.example .env
 ```
 
-Update `.env` if needed:
+Default `.env.example` values:
+
 ```env
 PORT=5000
 MONGODB_URI=mongodb://127.0.0.1:27017/cloud_cost_optimization
@@ -92,21 +91,27 @@ NODE_ENV=development
 CORS_ORIGIN=http://localhost:5173
 ```
 
-### Run in development
+### 3) Run the backend
+
+Development mode:
+
 ```bash
 npm run dev
 ```
 
-### Run in production mode
+Production mode:
+
 ```bash
 npm start
 ```
 
----
+Server base URL:
 
-## 3) API Endpoints (Phase 1)
+```txt
+http://localhost:5000/api
+```
 
-Base URL: `http://localhost:5000/api`
+## Phase 1 Endpoints
 
 - `GET /health`
 - `GET /datasets`
@@ -121,14 +126,4 @@ Base URL: `http://localhost:5000/api`
 - `POST /experiments`
 - `GET /dashboard`
 
-> Note: Many endpoints are intentionally simple placeholders for future phases.
-
----
-
-## 4) Next Steps (Phase 2+)
-
-- Add CSV upload handling for dataset ingestion
-- Integrate FastAPI ML service for preprocessing/training/prediction/evaluation
-- Expand decision engine logic in backend
-- Add stronger validation and input schemas
-- Add small targeted tests for critical routes
+> Note: These are intentionally simple placeholders for later phases.
