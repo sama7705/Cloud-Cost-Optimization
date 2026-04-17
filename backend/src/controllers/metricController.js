@@ -1,24 +1,16 @@
-const metricService = require('../services/metricService');
+const metricHistoryService = require('../services/metricHistoryService');
 
-async function getMetrics(req, res, next) {
+async function getMetricHistory(req, res, next) {
   try {
-    const metrics = await metricService.listMetrics();
+    const { datasetId } = req.query;
+    const metrics = await metricHistoryService.getMetricHistory(datasetId);
+
     res.json({ success: true, data: metrics });
   } catch (error) {
     next(error);
   }
 }
 
-async function createMetric(req, res, next) {
-  try {
-    const metric = await metricService.createMetric(req.body);
-    res.status(201).json({ success: true, data: metric });
-  } catch (error) {
-    next(error);
-  }
-}
-
 module.exports = {
-  getMetrics,
-  createMetric
+  getMetricHistory
 };
