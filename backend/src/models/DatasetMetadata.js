@@ -38,6 +38,10 @@ const datasetMetadataSchema = new mongoose.Schema(
       type: Map,
       of: Number,
       default: {}
+    },
+    preprocessingReport: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null
     }
   },
   { timestamps: true }
