@@ -1,6 +1,6 @@
 const scalingService = require('../services/scalingService');
 
-async function getScalingActions(req, res, next) {
+async function getScalingHistory(req, res, next) {
   try {
     const actions = await scalingService.listScalingActions();
     res.json({ success: true, data: actions });
@@ -9,9 +9,9 @@ async function getScalingActions(req, res, next) {
   }
 }
 
-async function runScaling(req, res, next) {
+async function evaluateScaling(req, res, next) {
   try {
-    const result = await scalingService.runScalingDecision(req.body);
+    const result = await scalingService.evaluateScaling(req.body);
     res.status(201).json({ success: true, data: result });
   } catch (error) {
     next(error);
@@ -19,6 +19,6 @@ async function runScaling(req, res, next) {
 }
 
 module.exports = {
-  getScalingActions,
-  runScaling
+  getScalingHistory,
+  evaluateScaling
 };

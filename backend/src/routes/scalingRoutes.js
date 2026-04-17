@@ -1,11 +1,15 @@
 const express = require('express');
-const { getScalingActions, runScaling } = require('../controllers/scalingController');
+const { getScalingHistory, evaluateScaling } = require('../controllers/scalingController');
 const validateRequest = require('../middleware/validateRequest');
-const { scalingRunSchema } = require('../validation/schemas');
+const { scalingEvaluateSchema } = require('../validation/schemas');
 
 const router = express.Router();
 
-router.get('/', getScalingActions);
-router.post('/run', validateRequest(scalingRunSchema), runScaling);
+router.get('/history', getScalingHistory);
+router.post('/evaluate', validateRequest(scalingEvaluateSchema), evaluateScaling);
+
+// Backward-compatible aliases
+router.get('/', getScalingHistory);
+router.post('/run', validateRequest(scalingEvaluateSchema), evaluateScaling);
 
 module.exports = router;
